@@ -1,5 +1,6 @@
 # Seqs_processing_tool
 This is a bioinformatic package for processing nucleotide sequences, which consists of two main functions `run_dna_rna_tools` and `filter_fastq`.
+
 A) `run_dna_rna_tools` 
 input a list of an arbitrary number of arguments with DNA or RNA sequences (str), as well as the name of the procedure to be performed (this is always the last argument, str). 
 The list of actions:
