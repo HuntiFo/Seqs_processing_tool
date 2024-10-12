@@ -9,6 +9,7 @@ from bioutils.module_1_dna_rna_tools import (
 )
 
 from bioutils.module_2_fastq import is_gc_fit, is_length_fit, is_quality_fit
+from bioutils.module_3_input_output import fastq_transfom_dict, dict_transform_fastq
 
 
 def run_dna_rna_tools(*args: str) -> str | list:
@@ -44,7 +45,8 @@ def run_dna_rna_tools(*args: str) -> str | list:
 
 
 def filter_fastq(
-    seqs: dict[str, tuple[str, str]],
+    input_fastq: str,
+    output_fastq: str,
     gc_bounds: float | tuple[float, float] = (0, 100),
     length_bounds: float | tuple[float, float] = (0, 2 ** 32),
     quality_threshold: float = 0,
@@ -52,9 +54,8 @@ def filter_fastq(
     """
     Description of function run_dna_rna_tools
 
-    :param seqs: dict of reads.
-            Keys: sequence name
-            Values: tuple(sequence, sequence_qulity)
+    :param input_fastq: path to fastq file.
+    :param output_fastq: new name of filtrated fastq file.
     :param gc_bounds: float|tuple
         The GC interval of the composition (in percent)
         for filtering (by default is (0, 100))
@@ -71,6 +72,7 @@ def filter_fastq(
     :return: processed seqs made by action (if one seq -> reurn str,
     else -> return list of str)
     """
+    seqs = fastq_transfom_dict(input_fastq)
     filtered_reads = {}
     for seq_name, seq_data in seqs.items():
         seq, qulity = seq_data
@@ -80,4 +82,4 @@ def filter_fastq(
             and is_quality_fit(qulity, quality_threshold)
         ):
             filtered_reads[seq_name] = seq_data
-    return filtered_reads
+    return dict_transform_fastq(filtered_reads, output_fastq)
