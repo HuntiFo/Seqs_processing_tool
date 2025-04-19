@@ -1,5 +1,19 @@
 from Bio import SeqIO
 from Bio.SeqUtils import gc_fraction
+from parser import parser
+import sys
+import logging
+
+logging.basicConfig(
+    filename="logs.log",
+    filemode="w",
+    format="{asctime} {levelname} +++ {message}",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    style="{",
+    level=logging.INFO,
+    force=True,
+    encoding="utf-8",
+)
 
 
 class BiologicalSequence:
@@ -150,13 +164,70 @@ def filter_fastq(
 ) -> None:
     if isinstance(gc_bounds, float | int):
         gc_bounds = [gc_bounds, 100]
+    elif isinstance(gc_bounds, tuple):
+        gc_bounds = [gc_bounds[0], gc_bounds[1]]
 
     if isinstance(length_bounds, float | int):
         length_bounds = [length_bounds, 2 ** 32]
+    elif isinstance(length_bounds, tuple):
+        length_bounds = [length_bounds[0], length_bounds[1]]
 
     with open(input_fastq, "r") as input_fastq, open(output_fastq, "w") as output_fastq:
         for record in SeqIO.parse(input_fastq, "fastq"):
             if min(record.letter_annotations["phred_quality"]) >= quality_threshold:
-                if gc_bounds[0] < gc_fraction(record.seq) * 100 < gc_bounds[1]:
-                    if length_bounds[0] < len(record.seq) < length_bounds[1]:
+                if gc_bounds[0] <= gc_fraction(record.seq) * 100 <= gc_bounds[1]:
+                    if length_bounds[0] <= len(record.seq) <= length_bounds[1]:
                         SeqIO.write(record, output_fastq, "fastq")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
+    args = parser.parse_args()
+    input_fastq = args.input_fastq
+    output_fastq = args.output_fastq
+    # parse gc_bounds
+    if args.gc_bounds is None:
+        gc_bounds = (0, 100)
+    else:
+        if len(args.gc_bounds) == 1:
+            gc_bounds = int(args.gc_bounds[0])
+        elif len(args.gc_bounds) == 2:
+            gc_bounds = tuple(filter(lambda x: float(x), args.gc_bounds))
+            if gc_bounds[0] > gc_bounds[1]:
+                gc_bounds = (gc_bounds[1], gc_bounds[0])
+                logging.error(
+                    f"Mistake the order of gc-bounds. New order is {gc_bounds}"
+                )
+        else:
+            raise Exception
+
+    # parse length_bounds
+    if args.length_bounds is None:
+        length_bounds = (0, 2 ** 32)
+    else:
+        if len(args.length_bounds) == 1:
+            length_bounds = int(args.length_bounds[0])
+        elif len(args.length_bounds) == 2:
+            length_bounds = tuple(filter(lambda x: int(x), args.length_bounds))
+        else:
+            raise Exception
+    # parse quality_threshold
+    if args.quality_threshold is None:
+        quality_threshold = 0
+    else:
+        quality_threshold = int(args.quality_threshold[0])
+
+    filter_fastq(input_fastq, output_fastq, gc_bounds, length_bounds, quality_threshold)
+
+    logging.info(
+        f"Fastq filtration with options:\n"
+        f"  - input file: {input_fastq}\n"
+        f"  - output file: {output_fastq}\n"
+        f"  - gc_bounds: {gc_bounds}\n"
+        f"  - length_bounds: {length_bounds}\n"
+        f"  - quality_threshold: {quality_threshold}\n"
+        "Performed successfully."
+    )
